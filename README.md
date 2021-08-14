@@ -19,9 +19,21 @@ Anaconda is used due to issues with PyAudio, pip installed via Anaconda to manag
 
 ## OSC Commands
 
-OSC API for Controlling OSCTranscribe:
+OSC API for Controlling OSCLufs:
 
 /OSCLufs/getLufs : request for the lufs data reply, do not call more frequently than twice per second. 
 
 By default, you send these commands to port 7070. Then, you should listen for the following OSC message:
 /OSCLufs/lufs {float data}: The current lufs reading from the buffer
+
+OSC Audio API for Controlling OSCLufs audio input:
+
+/OSCLufs/audio/getDevicesCount : Requests for the audio inputs count
+
+Listen for the following OSC message:
+/OSCLufs/audio/devicesCount {integer num}
+
+/OSCLufs/audio/getDevices: Request input devices name
+
+Listen for the following OSC message:
+/OSCLufs/audio/devices {List string}: Input devices name list
