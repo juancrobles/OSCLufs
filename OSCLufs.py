@@ -18,6 +18,7 @@ from pythonosc import udp_client
 import argparse
 import sys
 import time
+from enum import Enum
 
 #Numpy Library
 import numpy as np
@@ -84,6 +85,51 @@ class StreamProcessor(object):
 		#print(data)
 		return data
 
+class DeviceTypes(Enum):
+	ALL_DEVICES = 0
+	INPUT_DEVICES = 1
+	OUTPUT_DEVICES = 2
+
+class AudioManager(object):
+	def __init__(self):
+		super().__init__()
+		self._pa = pyaudio.PyAudio()
+
+	def getDevicesCount(self, type=DeviceTypes.ALL_DEVICES):
+		# print("get devices count")
+		count = 0
+
+		if(type == DeviceTypes.ALL_DEVICES):
+			count = self._pa.get_device_count()
+		else:
+			for i in range(self._pa.get_device_count()):
+				device = self._pa.get_device_info_by_index(i)
+
+				if(type == DeviceTypes.INPUT_DEVICES and device.get("maxInputChannels") > 0):
+					count += 1
+				elif(type == DeviceTypes.OUTPUT_DEVICES and device.get("maxOutputChannels") > 0):
+					count += 1
+
+		return count
+ 
+	def getDevices(self, type=DeviceTypes.ALL_DEVICES):
+		# print("get devices")
+		devices = []
+
+		for i in range(self._pa.get_device_count()):
+			# print("device:", self._pa.get_device_info_by_index(i))
+			# print()
+			device = self._pa.get_device_info_by_index(i)
+
+			if(type == DeviceTypes.ALL_DEVICES):
+				devices.append(device.get("name"))
+			elif(type == DeviceTypes.INPUT_DEVICES and device.get("maxInputChannels") > 0):
+				devices.append(device.get("name"))
+			elif(type == DeviceTypes.OUTPUT_DEVICES and device.get("maxOutputChannels") > 0):
+				devices.append(device.get("name"))
+
+		return devices
+
 audio_stream = pyaudio.PyAudio()
 
 print("ALL SYSTEM AUDIO DEVICES:")
@@ -137,8 +183,15 @@ def getLufs(unused_addr):
 	#send the loundess as OSC
 	client.send_message("/OSCLufs/lufs", loudness)
 
+def getAudioDevices(unused_addr, args):
+	client.send_message("/OSCLufs/audio/devices", args[0])
+
+def getAudioDevicesCount(unused_addr, args):
+	client.send_message("/OSCLufs/audio/devicesCount", args[0])
 
 if __name__ == "__main__":
+	#Initialize audio manager
+	am = AudioManager()
 
 	#Get the networking info from the user
 	print("Would you like to [1] Input network parameters or [2] use default: 127.0.0.1:1234 (send) and 127.0.0.1:7070 (receive)?")
@@ -168,6 +221,9 @@ if __name__ == "__main__":
 	#catches OSC messages
 	dispatcher = dispatcher.Dispatcher()
 	dispatcher.map("/OSCLufs/getLufs", getLufs)
+	#audio commands
+	dispatcher.map("/OSCLufs/audio/getDevices", getAudioDevices, am.getDevices(DeviceTypes.INPUT_DEVICES))
+	dispatcher.map("/OSCLufs/audio/getDevicesCount", getAudioDevicesCount, am.getDevicesCount(DeviceTypes.INPUT_DEVICES))
 	
 	#set up server to listen for osc messages
 	server = osc_server.ThreadingOSCUDPServer((send_ip,in_port),dispatcher)
@@ -183,5 +239,20 @@ if __name__ == "__main__":
 	print("/OSCLufs/lufs {float num}: The lufs")
 	print()
 
+	#Print Audio API
+	print("OSC Audio API")
+	print()
+	print("OSC API for Getting audio input devices count:")
+	print("/OSCLufs/audio/getDevicesCount: Request input devices count")
+	print()
+	print("OSC API for Receiving Text from OSCLufs:")
+	print("/OSCLufs/audio/devicesCount {integer num}: Input devices count")
+	print()
+	print("OSC API for Getting audio input devices:")
+	print("/OSCLufs/audio/getDevices: Request input devices")
+	print()
+	print("OSC API for Receiving Text from OSCLufs:")
+	print("/OSCLufs/audio/devices {List string}: Input devices name list")
+	print()
 	#begin the infinite loop
 	server.serve_forever()
