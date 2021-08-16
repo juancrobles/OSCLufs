@@ -46,10 +46,43 @@ class DeviceTypes(Enum):
 	INPUT_DEVICES = 1
 	OUTPUT_DEVICES = 2
 
+class DeviceType(Enum):
+	INPUT_OUTPUT_DEVICE = 0
+	INPUT_DEVICE = 1
+	OUTPUT_DEVICE = 2
+
+class AudioDevice(object):
+	def __init__(self, device) -> None:
+		super().__init__()
+		self._device = device
+
+	def index(self) -> int: 
+		return int(self._device.get("index"))
+
+	def name(self) -> str:
+		return str(self._device.get("name"))
+
+	def sampleRate(self) -> int: 
+		return int(self._device.get("defaultSampleRate"))
+
+	def type(self) -> DeviceType: 
+		if(self._device.get("maxInputChannels") != 0 and self._device.get("maxOutputChannels") == 0):
+			return DeviceType.INPUT_DEVICE
+		elif(self._device.get("maxInputChannels") == 0 and self._device.get("maxOutputChannels") != 0):
+			return DeviceType.OUTPUT_DEVICE
+
+		return DeviceType.INPUT_OUTPUT_DEVICE
+
 class AudioManager(object):
 	def __init__(self):
 		super().__init__()
 		self._pa = pyaudio.PyAudio()
+		try:
+			self._inputDevice = AudioDevice(self._pa.get_default_input_device_info())
+			# print("Default input device:", self._inputDevice)
+
+		except IOError:
+			print("Error: there is no default input device")
 
 	def getDevicesCount(self, type=DeviceTypes.ALL_DEVICES):
 		# print("get devices count")
@@ -70,7 +103,7 @@ class AudioManager(object):
  
 	def getDevices(self, type=DeviceTypes.ALL_DEVICES):
 		# print("get devices")
-		devices = []
+		self._devices = []
 
 		for i in range(self._pa.get_device_count()):
 			# print("device:", self._pa.get_device_info_by_index(i))
@@ -78,13 +111,23 @@ class AudioManager(object):
 			device = self._pa.get_device_info_by_index(i)
 
 			if(type == DeviceTypes.ALL_DEVICES):
-				devices.append(device.get("name"))
+				self._devices.append(AudioDevice(device))
 			elif(type == DeviceTypes.INPUT_DEVICES and device.get("maxInputChannels") > 0):
-				devices.append(device.get("name"))
+				self._devices.append(AudioDevice(device))
 			elif(type == DeviceTypes.OUTPUT_DEVICES and device.get("maxOutputChannels") > 0):
-				devices.append(device.get("name"))
+				self._devices.append(AudioDevice(device))
 
-		return devices
+		return self._devices
+
+	def getInputDevice(self) -> AudioDevice:
+		return self._inputDevice
+
+	def setInputDevice(self, device: AudioDevice):
+		self._inputDevice = device
+
+	def getDeviceFromIndex(self, index) -> AudioDevice:
+		return AudioDevice(self._pa.get_device_info_by_index(index))
+
 
 # JCR: Resources - https://www.youtube.com/watch?v=at2NppqIZok and https://github.com/aniawsz/rtmonoaudio2midi
 class StreamProcessor(object):
@@ -130,21 +173,28 @@ class StreamProcessor(object):
 		#print(data)
 		return data
 
-audio_stream = pyaudio.PyAudio()
+#Initialize AudioManager
+am = AudioManager()
+# audio_stream = pyaudio.PyAudio()
 
 print("ALL SYSTEM AUDIO DEVICES:")
 print()
 
-for i in range(audio_stream.get_device_count()):
-	sys.stdout.write(str(i))
+devices = am.getDevices(DeviceTypes.INPUT_DEVICES)
+
+for device in devices:
+	sys.stdout.write(str(device.index()))
 	sys.stdout.write(" ")
-	sys.stdout.write(audio_stream.get_device_info_by_index(i).get("name"))
+	sys.stdout.write(device.name())
+	if(device.index() == am.getInputDevice().index()):
+		sys.stdout.write(" (default)")
 	sys.stdout.write('\n')
 
 print()
 print("Please select the audio device to listen to:")
 
 micIndex = int(input())
+selected_device = am.getDeviceFromIndex(micIndex)
 
 def getLufs(unused_addr):
 	# print("Running getLufs function!")
