@@ -41,50 +41,6 @@ from app_setup import (
 	MIN_LOUDNESS,
 	DURATION)
 
-# JCR: Resources - https://www.youtube.com/watch?v=at2NppqIZok and https://github.com/aniawsz/rtmonoaudio2midi
-class StreamProcessor(object):
-	def __init__(self, input_device, \
-				format = pyaudio.paFloat32, \
-				input = True, \
-				sample_rate = SAMPLE_RATE, \
-				frames_per_buffer = FRAMES_PER_BUFFER, \
-				channels = CHANNELS):
-		self._input_device = input_device
-		self._format = format
-		self._input = input
-		self._sample_rate = sample_rate
-		self._frames_per_buffer = frames_per_buffer
-		self._channels = channels
-
-	def run(self):
-		pya = pyaudio.PyAudio()
-		self._stream = pya.open(
-			format=self._format,
-			channels=self._channels,
-			rate=self._sample_rate,
-			input=self._input,
-			frames_per_buffer=self._frames_per_buffer,
-			stream_callback=self._process_frame
-		)
-		self._stream.start_stream()
-
-		while self._stream.is_active(): #and not self._stream.raw_input():
-			time.sleep(0.1)
-
-		self._stream.stop_stream()
-		self._stream.close()
-		pya.terminate()
-
-	def _process_frame(self, data, frame_count, time_info, status_flag):
-		self._data = data
-		return (data, pyaudio.paComplete)
-
-	def getData(self):
-		data = self._data
-		self._data = None
-		#print(data)
-		return data
-
 class DeviceTypes(Enum):
 	ALL_DEVICES = 0
 	INPUT_DEVICES = 1
@@ -129,6 +85,50 @@ class AudioManager(object):
 				devices.append(device.get("name"))
 
 		return devices
+
+# JCR: Resources - https://www.youtube.com/watch?v=at2NppqIZok and https://github.com/aniawsz/rtmonoaudio2midi
+class StreamProcessor(object):
+	def __init__(self, input_device, \
+				format = pyaudio.paFloat32, \
+				input = True, \
+				sample_rate = SAMPLE_RATE, \
+				frames_per_buffer = FRAMES_PER_BUFFER, \
+				channels = CHANNELS):
+		self._input_device = input_device
+		self._format = format
+		self._input = input
+		self._sample_rate = sample_rate
+		self._frames_per_buffer = frames_per_buffer
+		self._channels = channels
+
+	def run(self):
+		pya = pyaudio.PyAudio()
+		self._stream = pya.open(
+			format=self._format,
+			channels=self._channels,
+			rate=self._sample_rate,
+			input=self._input,
+			frames_per_buffer=self._frames_per_buffer,
+			stream_callback=self._process_frame
+		)
+		self._stream.start_stream()
+
+		while self._stream.is_active(): #and not self._stream.raw_input():
+			time.sleep(0.1)
+
+		self._stream.stop_stream()
+		self._stream.close()
+		pya.terminate()
+
+	def _process_frame(self, data, frame_count, time_info, status_flag):
+		self._data = data
+		return (data, pyaudio.paComplete)
+
+	def getData(self):
+		data = self._data
+		self._data = None
+		#print(data)
+		return data
 
 audio_stream = pyaudio.PyAudio()
 
