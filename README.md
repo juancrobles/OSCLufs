@@ -28,12 +28,22 @@ By default, you send these commands to port 7070. Then, you should listen for th
 
 OSC Audio API for Controlling OSCLufs audio input:
 
-/OSCLufs/audio/getDevicesCount : Requests for the audio inputs count
+/OSCLufs/audio/getDevicesCount {string ALL|INPUT|OUTPUT}: Requests for the audio inputs count
+Parameters:
+    1.- Type of devices of type string, available values:
+        * ALL: search against all devices connected.
+        * INPUT: only input devices connected.
+        * OUPUT: only output devices connected.
 
 Listen for the following OSC message:
 /OSCLufs/audio/devicesCount {integer num}
 
-/OSCLufs/audio/getDevices: Request input devices name
+/OSCLufs/audio/getDevices {string ALL|INPUT|OUTPUT}: Request input devices name
+Parameters:
+    1.- Type of devices of type string, available values:
+        * ALL: search against all devices connected.
+        * INPUT: only input devices connected.
+        * OUPUT: only output devices connected.
 
 Listen for the following OSC message:
 /OSCLufs/audio/devices {List string}: Input devices name list
