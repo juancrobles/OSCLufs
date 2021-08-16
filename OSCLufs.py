@@ -119,6 +119,13 @@ class AudioManager(object):
 
 		return self._devices
 
+	def getDevicesNameList(self, type=DeviceTypes.ALL_DEVICES):
+		self.getDevices(type)
+		names = []
+		for device in self._devices:
+			names.append(device.name())
+		return names
+
 	def getInputDevice(self) -> AudioDevice:
 		return self._inputDevice
 
@@ -234,10 +241,20 @@ def getLufs(unused_addr):
 	client.send_message("/OSCLufs/lufs", loudness)
 
 def getAudioDevices(unused_addr, args):
-	client.send_message("/OSCLufs/audio/devices", args[0])
+	client.send_message("/OSCLufs/audio/devices", am.getDevicesNameList(_deviceTypeFromArgs(args)))
 
 def getAudioDevicesCount(unused_addr, args):
-	client.send_message("/OSCLufs/audio/devicesCount", args[0])
+	client.send_message("/OSCLufs/audio/devicesCount", am.getDevicesCount(_deviceTypeFromArgs(args)))
+
+def _deviceTypeFromArgs(args):
+	type_devices = DeviceTypes.ALL_DEVICES
+
+	if(str(args).upper() == 'INPUT'):
+		type_devices = DeviceTypes.INPUT_DEVICES
+	elif(str(args).upper() == 'OUTPUT'):
+		type_devices = DeviceTypes.OUTPUT_DEVICES
+	
+	return type_devices
 
 if __name__ == "__main__":
 	#Initialize audio manager
@@ -272,8 +289,8 @@ if __name__ == "__main__":
 	dispatcher = dispatcher.Dispatcher()
 	dispatcher.map("/OSCLufs/getLufs", getLufs)
 	#audio commands
-	dispatcher.map("/OSCLufs/audio/getDevices", getAudioDevices, am.getDevices(DeviceTypes.INPUT_DEVICES))
-	dispatcher.map("/OSCLufs/audio/getDevicesCount", getAudioDevicesCount, am.getDevicesCount(DeviceTypes.INPUT_DEVICES))
+	dispatcher.map("/OSCLufs/audio/getDevices", getAudioDevices)
+	dispatcher.map("/OSCLufs/audio/getDevicesCount", getAudioDevicesCount)
 	
 	#set up server to listen for osc messages
 	server = osc_server.ThreadingOSCUDPServer((send_ip,in_port),dispatcher)
