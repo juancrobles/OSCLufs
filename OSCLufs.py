@@ -210,13 +210,13 @@ def getLufs(unused_addr):
 	frames = []
 
 	# Initialize meter
-	meter = pyln.Meter(SAMPLE_RATE)
+	meter = pyln.Meter(selected_device.sampleRate())
 
 	# Initialize Audio capture
-	sp = StreamProcessor(micIndex)
+	sp = StreamProcessor(selected_device.index)
 
 	# Capture audio frames for duration
-	for i in range(0, int(SAMPLE_RATE / FRAMES_PER_BUFFER * DURATION)):
+	for i in range(0, int(selected_device.sampleRate() / FRAMES_PER_BUFFER * DURATION)):
 		sp.run()
 		data = sp.getData()
 		frames.append(data)
