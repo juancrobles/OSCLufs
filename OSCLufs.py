@@ -135,6 +135,17 @@ class AudioManager(object):
 	def getDeviceFromIndex(self, index) -> AudioDevice:
 		return AudioDevice(self._pa.get_device_info_by_index(index))
 
+	def getDeviceFromName(self, deviceName):
+		device_selected = AudioDevice(self._pa.get_default_input_device_info())
+
+		self.getDevices()
+
+		for device in self._devices:
+			if(device.name() == deviceName):
+				device_selected = device
+				return device_selected
+
+		return device_selected
 
 # JCR: Resources - https://www.youtube.com/watch?v=at2NppqIZok and https://github.com/aniawsz/rtmonoaudio2midi
 class StreamProcessor(object):
@@ -162,6 +173,7 @@ class StreamProcessor(object):
 		self._stream = pya.open(
 			format=self._format,
 			channels=self._channels,
+			input_device_index=self._input_device,
 			rate=self._sample_rate,
 			input=self._input,
 			frames_per_buffer=self._frames_per_buffer,
@@ -216,20 +228,30 @@ for device in devices:
 print()
 print("Please select the audio device to listen to:")
 
-micIndex = int(input())
-selected_device = am.getDeviceFromIndex(micIndex)
+# micIndex = int(input())
+# selected_device = am.getDeviceFromIndex(micIndex)
 
-def getLufs(unused_addr):
+def getLufs(unused_addr, *args):
 	# print("Running getLufs function!")
 	# Initialize local variables
 	loudness = -70.0
 	frames = []
 
+	print("Args:", args)
+	duration = args[0]
+	audio_device = args[1]
+
+	selected_device = am.getDeviceFromName(audio_device)
+
 	# Initialize meter
 	meter = pyln.Meter(selected_device.sampleRate())
 
 	# Initialize Audio capture
-	sp = StreamProcessor(selected_device.index, sample_rate=selected_device.sampleRate())
+	sp = StreamProcessor(
+		selected_device.index(), 
+		sample_rate=selected_device.sampleRate(),
+		duration=duration
+		)
 
 	# Capture audio frames for duration
 	sp.run()
