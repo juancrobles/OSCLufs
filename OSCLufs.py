@@ -237,8 +237,11 @@ def getLufs(unused_addr, *args):
 	loudness = -70.0
 	frames = []
 
-	print("Args:", args)
-	duration = args[0]
+	if(type(args[0]) is float and args[0] >= 0.5):
+		duration = args[0]
+	else:
+		duration = 0.5
+
 	audio_device = args[1]
 
 	selected_device = am.getDeviceFromName(audio_device)
