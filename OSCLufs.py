@@ -143,15 +143,21 @@ class StreamProcessor(object):
 				input = True, \
 				sample_rate = SAMPLE_RATE, \
 				frames_per_buffer = FRAMES_PER_BUFFER, \
-				channels = CHANNELS):
+				channels = CHANNELS, \
+				duration = DURATION):
 		self._input_device = input_device
 		self._format = format
 		self._input = input
 		self._sample_rate = sample_rate
 		self._frames_per_buffer = frames_per_buffer
 		self._channels = channels
+		self._passes = 0
+		self._duration = duration
+		self._data = []
 
 	def run(self):
+		self._passes = 0
+		self._data.clear()
 		pya = pyaudio.PyAudio()
 		self._stream = pya.open(
 			format=self._format,
@@ -171,18 +177,28 @@ class StreamProcessor(object):
 		pya.terminate()
 
 	def _process_frame(self, data, frame_count, time_info, status_flag):
-		self._data = data
-		return (data, pyaudio.paComplete)
+		next = pyaudio.paContinue
+
+		# Calculate how many passes we require to do a full integration over DURATION
+		# passes = selected_device.sampleRate() / FRAMES_PER_BUFFER * DURATION 
+		# => passes * FRAMES_PER_BUFFER / selected_device.sampleRate() = DURATION
+		calc = (frame_count/self._sample_rate) * self._passes
+		# print("calculation:", calc)
+		
+		if(calc>= self._duration):
+			next = pyaudio.paComplete
+			# print("stop capturing:")
+
+		self._data.append(data)
+		self._passes += 1
+		return (data, next)
 
 	def getData(self):
 		data = self._data
-		self._data = None
-		#print(data)
 		return data
 
 #Initialize AudioManager
 am = AudioManager()
-# audio_stream = pyaudio.PyAudio()
 
 print("ALL SYSTEM AUDIO DEVICES:")
 print()
@@ -213,13 +229,12 @@ def getLufs(unused_addr):
 	meter = pyln.Meter(selected_device.sampleRate())
 
 	# Initialize Audio capture
-	sp = StreamProcessor(selected_device.index)
+	sp = StreamProcessor(selected_device.index, sample_rate=selected_device.sampleRate())
 
 	# Capture audio frames for duration
-	for i in range(0, int(selected_device.sampleRate() / FRAMES_PER_BUFFER * DURATION)):
-		sp.run()
-		data = sp.getData()
-		frames.append(data)
+	sp.run()
+	data = sp.getData()
+	frames = data
 
 	# Concatenate frames
 	total_data = b''.join(frames)
