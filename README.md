@@ -21,7 +21,13 @@ Anaconda is used due to issues with PyAudio, pip installed via Anaconda to manag
 
 OSC API for Controlling OSCLufs:
 
-/OSCLufs/getLufs : request for the lufs data reply, do not call more frequently than twice per second. 
+/OSCLufs/getLufs {float integration time, string input device name}: request for the lufs data reply
+Parameters:
+    1.- Integration time for loudness calculation, range:
+        * Min: The minimum integration time is 0.5 seconds.
+        * Max: No maximum value defined
+    2.- Input device name, if name no correspond to one of retrievef list in /OSCLufs/audio/devices
+        the system selected input device is used
 
 By default, you send these commands to port 7070. Then, you should listen for the following OSC message:
 /OSCLufs/lufs {float data}: The current lufs reading from the buffer
@@ -31,9 +37,9 @@ OSC Audio API for Controlling OSCLufs audio input:
 /OSCLufs/audio/getDevicesCount {string ALL|INPUT|OUTPUT}: Requests for the audio inputs count
 Parameters:
     1.- Type of devices of type string, available values:
-        * ALL: search against all devices connected.
-        * INPUT: only input devices connected.
-        * OUPUT: only output devices connected.
+        * ALL: Search against all devices connected.
+        * INPUT: Only input devices connected.
+        * OUPUT: Only output devices connected.
 
 Listen for the following OSC message:
 /OSCLufs/audio/devicesCount {integer num}

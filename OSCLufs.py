@@ -340,7 +340,7 @@ if __name__ == "__main__":
 	print("OSC Networking Established")
 	print()
 	print("OSC API for Controlling OSCLufs:")
-	print("/OSCLufs/getLufs: Request a lufs reply")
+	print("/OSCLufs/getLufs {float integration time, string input device name}: Request a lufs reply")
 	print()
 	print("OSC API for Receiving Text from OSCLufs:")
 	print("/OSCLufs/lufs {float num}: The lufs")
