@@ -226,11 +226,8 @@ for device in devices:
 	sys.stdout.write('\n')
 
 print()
-print("Please select the audio device to listen to:")
 
-# micIndex = int(input())
-# selected_device = am.getDeviceFromIndex(micIndex)
-
+# OSC callback functions
 def getLufs(unused_addr, *args):
 	# print("Running getLufs function!")
 	# Initialize local variables
@@ -286,6 +283,7 @@ def getAudioDevices(unused_addr, args):
 def getAudioDevicesCount(unused_addr, args):
 	client.send_message("/OSCLufs/audio/devicesCount", am.getDevicesCount(_deviceTypeFromArgs(args)))
 
+# OSC callback support functions
 def _deviceTypeFromArgs(args):
 	type_devices = DeviceTypes.ALL_DEVICES
 
@@ -296,26 +294,36 @@ def _deviceTypeFromArgs(args):
 	
 	return type_devices
 
+# Main code
 if __name__ == "__main__":
+	# process arguments
+	parser = argparse.ArgumentParser(description="OSCLufs an OSC Loudness meter")
+	parser.add_argument(
+		'--send_ip_address', '-ip', 
+		dest='send_ip_address',
+		default='127.0.0.1',
+		help='Send ip address, default 127.0.0.1'
+		)
+	parser.add_argument(
+		'--send_port', '-sp', 
+		dest='send_port',
+		default='1234',
+		help='Send port, default: 1234'
+		)
+	parser.add_argument(
+		'--receive_port', '-rp', 
+		dest='receive_port',
+		default='7070',
+		help='Receive port, default: 7070'
+		)
+
+	args = parser.parse_args()
+	send_ip = str(args.send_ip_address)
+	send_port = int(args.send_port)
+	in_port = int(args.receive_port)
+
 	#Initialize audio manager
 	am = AudioManager()
-
-	#Get the networking info from the user
-	print("Would you like to [1] Input network parameters or [2] use default: 127.0.0.1:1234 (send) and 127.0.0.1:7070 (receive)?")
-	print("Enter 1 or 2")
-	
-	send_ip = "127.0.0.1"
-	send_port = 1234
-	in_port = 7070
-
-	selection = int(input())
-	if(selection == 1):
-		print("Input network parameters")
-		send_ip = str(input("Send ip?: "))
-		send_port = int(input("Send port?: "))
-		in_port = int(input("Receive port?: "))
-	else:
-		print("Using default network settings")
 	
 	#sending osc messages on
 	client = udp_client.SimpleUDPClient(send_ip,send_port)
