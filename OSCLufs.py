@@ -74,7 +74,7 @@ class AudioDevice(object):
 		return DeviceType.INPUT_OUTPUT_DEVICE
 
 class AudioManager(object):
-	def __init__(self):
+	def __init__(self , streaming = False):
 		super().__init__()
 		self._pa = pyaudio.PyAudio()
 		try:
@@ -83,6 +83,7 @@ class AudioManager(object):
 
 		except IOError:
 			print("Error: there is no default input device")
+		self._streaming = streaming
 
 	def getDevicesCount(self, type=DeviceTypes.ALL_DEVICES):
 		# print("get devices count")
@@ -146,6 +147,12 @@ class AudioManager(object):
 				return device_selected
 
 		return device_selected
+
+	def getStreaming(self):
+		return self._streaming
+
+	def setStreaming(self, value):
+		self._streaming = value
 
 # JCR: Resources - https://www.youtube.com/watch?v=at2NppqIZok and https://github.com/aniawsz/rtmonoaudio2midi
 class StreamProcessor(object):
@@ -212,6 +219,9 @@ class StreamProcessor(object):
 #Initialize AudioManager
 am = AudioManager()
 
+streaming = False
+streamingMode = False
+
 print("ALL SYSTEM AUDIO DEVICES:")
 print()
 
@@ -277,6 +287,62 @@ def getLufs(unused_addr, *args):
 	#send the loundess as OSC
 	client.send_message("/OSCLufs/lufs", loudness)
 
+def streamLufs(unused_addr, *args):
+	print("Streaming Lufs")
+
+	loudness = -70.0
+	frames = []
+	am.setStreaming(True)
+
+	if(type(args[0]) is float and args[0] >= 0.5):
+		duration = args[0]
+	else:
+		duration = 0.5
+
+	audio_device = args[1]
+
+	selected_device = am.getDeviceFromName(audio_device)
+
+	while am.getStreaming():
+		# Initialize meter
+		meter = pyln.Meter(selected_device.sampleRate())
+
+		# Initialize Audio capture
+		sp = StreamProcessor(
+			selected_device.index(), 
+			sample_rate=selected_device.sampleRate(),
+			duration=duration
+			)
+
+		# Capture audio frames for duration
+		sp.run()
+		data = sp.getData()
+
+		frames = data
+
+		# Concatenate frames
+		total_data = b''.join(frames)
+		data_samples = np.frombuffer(total_data,dtype=np.float32)
+
+		# print("total data count:", len(total_data))
+		# print("data samples count", len(data_samples))
+
+		# Calculate loudness
+		inmediate_loudness = meter.integrated_loudness(data_samples) # measure loudness
+
+		# Limiter lower output value
+		if(inmediate_loudness < MIN_LOUDNESS):
+			loudness = MIN_LOUDNESS
+		else:
+			loudness = inmediate_loudness
+
+		#send the loundess as OSC
+		client.send_message("/OSCLufs/lufs", loudness)
+
+def stopLufs(unused_addr):
+	print("Stop sreaming Lufs")
+	am.setStreaming(False)
+
 def getAudioDevices(unused_addr, args):
 	client.send_message("/OSCLufs/audio/devices", am.getDevicesNameList(_deviceTypeFromArgs(args)))
 
@@ -335,7 +401,12 @@ if __name__ == "__main__":
 
 	#catches OSC messages
 	dispatcher = dispatcher.Dispatcher()
+
+	#lufs commands
 	dispatcher.map("/OSCLufs/getLufs", getLufs)
+	dispatcher.map("/OSCLufs/streamLufs", streamLufs)
+	dispatcher.map("/OSCLufs/stopLufs", stopLufs)
+
 	#audio commands
 	dispatcher.map("/OSCLufs/audio/getDevices", getAudioDevices)
 	dispatcher.map("/OSCLufs/audio/getDevicesCount", getAudioDevicesCount)
@@ -347,12 +418,27 @@ if __name__ == "__main__":
 	#Print API
 	print("OSC Networking Established")
 	print()
+	print("OSC LUFS API")
+	print()
 	print("OSC API for Controlling OSCLufs:")
 	print("/OSCLufs/getLufs {float integration time, string input device name}: Request a lufs reply")
 	print()
 	print("OSC API for Receiving Text from OSCLufs:")
 	print("/OSCLufs/lufs {float num}: The lufs")
 	print()
+	print("OSC API to start streaming OSCLufs:")
+	print("/OSCLufs/streamLufs {float refresh rate, string input device name, string measurement mode}: Start streaming lufs reply")
+	print()
+	print("OSC API to stop streaming OSCLufs:")
+	print("/OSCLufs/stopLufs: Stop streaming lufs")
+	print()
+	print("OSC API for Receiving Text from OSCLufs:")
+	print("/OSCLufs/lufs {float num}: The lufs")
+	print()
+	# To be implemented 
+	# print("OSC API for Receiving Text from OSCLufs:")
+	# print("/OSCLufs/maxLufs {float num}: The maximum value of lufs")
+	# print()
 
 	#Print Audio API
 	print("OSC Audio API")

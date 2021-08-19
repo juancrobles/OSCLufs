@@ -32,6 +32,16 @@ Parameters:
 By default, you send these commands to port 7070. Then, you should listen for the following OSC message:
 /OSCLufs/lufs {float data}: The current lufs reading from the buffer
 
+/OSCLufs/streamLufs {float refresh rate, string input device name}: start stream of lufs data
+Parameters:
+    1.- Integration time for loudness calculation, range:
+        * Min: The minimum integration time is 0.5 seconds.
+        * Max: No maximum value defined
+    2.- Input device name, if name no correspond to one of retrievef list in /OSCLufs/audio/devices
+        the system selected input device is used
+
+/OSCLufs/stopLufs: stop the stream of lufs data
+
 OSC Audio API for Controlling OSCLufs audio input:
 
 /OSCLufs/audio/getDevicesCount {string ALL|INPUT|OUTPUT}: Requests for the audio inputs count
