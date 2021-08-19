@@ -24,7 +24,7 @@ OSC API for Controlling OSCLufs:
 /OSCLufs/getLufs {float integration time, string input device name}: request for the lufs data reply
 Parameters:
     1.- Integration time for loudness calculation, range:
-        * Min: The minimum integration time is 0.5 seconds.
+        * Min: The minimum integration time is 3 seconds.
         * Max: No maximum value defined
     2.- Input device name, if name no correspond to one of retrievef list in /OSCLufs/audio/devices
         the system selected input device is used
@@ -35,7 +35,7 @@ By default, you send these commands to port 7070. Then, you should listen for th
 /OSCLufs/streamLufs {float refresh rate, string input device name}: start stream of lufs data
 Parameters:
     1.- Integration time for loudness calculation, range:
-        * Min: The minimum integration time is 0.5 seconds.
+        * Min: The minimum integration time is 3 seconds.
         * Max: No maximum value defined
     2.- Input device name, if name no correspond to one of retrievef list in /OSCLufs/audio/devices
         the system selected input device is used

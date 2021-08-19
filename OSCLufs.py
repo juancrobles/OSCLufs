@@ -24,7 +24,10 @@ from enum import Enum
 import numpy as np
 
 #Loudness Processing Library
-import pyloudnorm as pyln
+# import pyloudnorm as pyln
+from pyebur128 import (
+    ChannelType, MeasurementMode, R128State, get_loudness_shortterm
+)
 
 #Files (No longer needed, but left for future use)
 import wave
@@ -72,6 +75,13 @@ class AudioDevice(object):
 			return DeviceType.OUTPUT_DEVICE
 
 		return DeviceType.INPUT_OUTPUT_DEVICE
+
+	def channels(self, type: DeviceType):
+		if(type == DeviceType.INPUT_DEVICE):
+			return self._device.get("maxInputChannels")
+		elif(type == DeviceType.OUTPUT_DEVICE):
+			return self._device.get("maxOutputChannels")
+		else: self._device.get("maxInputChannels") + self._device.get("maxOutputChannels")
 
 class AudioManager(object):
 	def __init__(self , streaming = False):
@@ -242,23 +252,31 @@ def getLufs(unused_addr, *args):
 	# print("Running getLufs function!")
 	# Initialize local variables
 	loudness = -70.0
-	frames = []
-
-	if(type(args[0]) is float and args[0] >= 0.5):
+	if(type(args[0]) is float and args[0] >= 3.0):
 		duration = args[0]
 	else:
-		duration = 0.5
+		duration = 3.0
+
+	# print("Args:", args)
 
 	audio_device = args[1]
 
 	selected_device = am.getDeviceFromName(audio_device)
 
+	total_frames_read = 0
+
 	# Initialize meter
-	meter = pyln.Meter(selected_device.sampleRate())
+	state = R128State(
+		selected_device.channels(DeviceType.INPUT_DEVICE),
+		# 1,
+		selected_device.sampleRate(),
+		MeasurementMode.MODE_S
+		)
 
 	# Initialize Audio capture
 	sp = StreamProcessor(
-		selected_device.index(), 
+		selected_device.index(),
+		channels=selected_device.channels(DeviceType.INPUT_DEVICE),
 		sample_rate=selected_device.sampleRate(),
 		duration=duration
 		)
@@ -266,50 +284,75 @@ def getLufs(unused_addr, *args):
 	# Capture audio frames for duration
 	sp.run()
 	data = sp.getData()
-	frames = data
 
-	# Concatenate frames
-	total_data = b''.join(frames)
+	# print("Data returned:", len(data))
+
+	total_data = b''.join(data)
 	data_samples = np.frombuffer(total_data,dtype=np.float32)
 
-	# print("total data count:", len(total_data))
-	# print("data samples count", len(data_samples))
+	block = data_samples.reshape(int(len(data_samples)/2), 2)
+	# print("data samples:", int(len(data_samples)/2))
 
-	# Calculate loudness
-	inmediate_loudness = meter.integrated_loudness(data_samples) # measure loudness
+	frames_read = len(block)
+	total_frames_read += frames_read
 
-	# Limiter lower output value
-	if(inmediate_loudness < MIN_LOUDNESS):
-		loudness = MIN_LOUDNESS
-	else:
-		loudness = inmediate_loudness
+	for sample in block:
+		# print("Sample:", len(sample), type(sample), sample)
+		state.add_frames(sample, 1)
+
+	if total_frames_read >= 3 * selected_device.sampleRate():
+		# print("reached sample count:")
+		inmediate_loudness = get_loudness_shortterm(state)
+		# print("loudness:", inmediate_loudness)
+
+		# Limiter lower output value
+		if(inmediate_loudness < MIN_LOUDNESS):
+			loudness = MIN_LOUDNESS
+		else:
+			loudness = inmediate_loudness
+
+		# #send the loundess as OSC
+		# client.send_message("/OSCLufs/lufs", loudness)
 
 	#send the loundess as OSC
 	client.send_message("/OSCLufs/lufs", loudness)
+
+	del state
 
 def streamLufs(unused_addr, *args):
 	print("Streaming Lufs")
 
 	loudness = -70.0
-	frames = []
+	# frames = []
 	am.setStreaming(True)
 
-	if(type(args[0]) is float and args[0] >= 0.5):
-		duration = args[0]
+	if(type(args[0]) is float and args[0] >= 0.1):
+		duration = 0.2 # args[0]
 	else:
-		duration = 0.5
+		duration = 0.2
 
 	audio_device = args[1]
 
 	selected_device = am.getDeviceFromName(audio_device)
 
+	total_frames_read = 0
 	while am.getStreaming():
 		# Initialize meter
-		meter = pyln.Meter(selected_device.sampleRate())
+		# meter = pyln.Meter(selected_device.sampleRate())
+		state = R128State(
+			selected_device.channels(DeviceType.INPUT_DEVICE),
+			# 1,
+			selected_device.sampleRate(),
+			MeasurementMode.MODE_S
+			)
+
+		# print("State:", state)
+		# print()
 
 		# Initialize Audio capture
 		sp = StreamProcessor(
-			selected_device.index(), 
+			selected_device.index(),
+			channels=selected_device.channels(DeviceType.INPUT_DEVICE),
 			sample_rate=selected_device.sampleRate(),
 			duration=duration
 			)
@@ -318,26 +361,57 @@ def streamLufs(unused_addr, *args):
 		sp.run()
 		data = sp.getData()
 
-		frames = data
-
-		# Concatenate frames
-		total_data = b''.join(frames)
+		total_data = b''.join(data)
 		data_samples = np.frombuffer(total_data,dtype=np.float32)
+
+		# print("Sample size:", pyaudio.get_sample_size(pyaudio.paFloat32))
+		# print()
+		# print("Captured data:", len(data_samples), data_samples)
+		# print()
+
+		# block = [] #np.ndarray(shape=(2, int(len(data_samples)/2)), dtype=np.float32)
+		# for i in range(int(len(data_samples)/2)):
+		# 	# print("Sample pair:", i)
+		# 	block.append(np.array([data_samples[i], data_samples[i+1]]))
+		# 	i += 1
+
+		block = data_samples.reshape(int(len(data_samples)/2), 2)
+
+		# print("Block:", len(block), block)
+		# print()
+
+		frames_read = len(block)
+		total_frames_read += frames_read
+
+		# print("Block:", len(block), block)
+		# print()
+		for sample in block:
+			# print("Sample:", len(sample), type(sample), sample)
+			state.add_frames(sample, 1)
 
 		# print("total data count:", len(total_data))
 		# print("data samples count", len(data_samples))
 
 		# Calculate loudness
-		inmediate_loudness = meter.integrated_loudness(data_samples) # measure loudness
+		# inmediate_loudness = meter.integrated_loudness(data_samples) # measure loudness
+		if total_frames_read >= 3 * selected_device.sampleRate():
+			print("reached sample count:")
+			inmediate_loudness = get_loudness_shortterm(state)
+			print("loudness:", inmediate_loudness)
 
-		# Limiter lower output value
-		if(inmediate_loudness < MIN_LOUDNESS):
-			loudness = MIN_LOUDNESS
-		else:
-			loudness = inmediate_loudness
+			# Limiter lower output value
+			if(inmediate_loudness < MIN_LOUDNESS):
+				loudness = MIN_LOUDNESS
+			else:
+				loudness = inmediate_loudness
+
+			# #send the loundess as OSC
+			# client.send_message("/OSCLufs/lufs", loudness)
 
 		#send the loundess as OSC
 		client.send_message("/OSCLufs/lufs", loudness)
+
+	del state
 
 def stopLufs(unused_addr):
 	print("Stop sreaming Lufs")
