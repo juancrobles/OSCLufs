@@ -232,7 +232,7 @@ am = AudioManager()
 streaming = False
 streamingMode = False
 
-print("ALL SYSTEM AUDIO DEVICES:")
+print("ALL SYSTEM INPUT AUDIO DEVICES:")
 print()
 
 devices = am.getDevices(DeviceTypes.INPUT_DEVICES)
@@ -310,9 +310,6 @@ def getLufs(unused_addr, *args):
 			loudness = MIN_LOUDNESS
 		else:
 			loudness = inmediate_loudness
-
-		# #send the loundess as OSC
-		# client.send_message("/OSCLufs/lufs", loudness)
 
 	#send the loundess as OSC
 	client.send_message("/OSCLufs/lufs", loudness)
@@ -509,7 +506,7 @@ if __name__ == "__main__":
 	print("OSC API for Receiving Text from OSCLufs:")
 	print("/OSCLufs/lufs {float num}: The lufs")
 	print()
-	# To be implemented 
+	# Todo: To be implemented 
 	# print("OSC API for Receiving Text from OSCLufs:")
 	# print("/OSCLufs/maxLufs {float num}: The maximum value of lufs")
 	# print()

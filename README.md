@@ -10,7 +10,7 @@ PyAudio for getting data from the audio bus: https://pypi.org/project/PyAudio/
 
 Python Sound File for decoding the audio buffer: https://pypi.org/project/SoundFile/
 
-Pyloudnorm for calculating the lufs: https://github.com/csteinmetz1/pyloudnorm
+Pyebur128 for calculating the short term lufs: https://github.com/jodhus/pyebur128
 
 ## Build
 Releases are built with pyinstaller using: pyinstaller --hidden-import scipy.spatial.transform._rotation_groups --hidden-import scipy.special.cython_special OSCLufs.py
